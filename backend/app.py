@@ -398,6 +398,53 @@ async def list_features():
     }
 
 
+@app.get("/historical-data")
+async def get_historical_data(days: int = 30):
+    """
+    Get historical SPY data with technical indicators for charting
+    
+    Args:
+        days: Number of days of historical data (default 30)
+        
+    Returns:
+        Historical prices and key technical indicators
+    """
+    try:
+        # Fetch historical data
+        df = fetch_latest_spy_data(days_back=days)
+        df = calculate_technical_features(df)
+        
+        # Prepare data for frontend
+        dates = df.index.strftime('%Y-%m-%d').tolist()
+        
+        response_data = {
+            "dates": dates,
+            "close_prices": df['Close_SPY'].round(2).tolist(),
+            "volume": df['Volume_SPY'].tolist(),
+            "technical_indicators": {
+                "ma_5": df['ma_5'].round(2).tolist() if 'ma_5' in df.columns else [],
+                "ma_20": df['ma_20'].round(2).tolist() if 'ma_20' in df.columns else [],
+                "ma_50": df['ma_50'].round(2).tolist() if 'ma_50' in df.columns else [],
+                "rsi": df['rsi'].round(2).tolist() if 'rsi' in df.columns else [],
+                "bb_upper": df['bb_upper'].round(2).tolist() if 'bb_upper' in df.columns else [],
+                "bb_lower": df['bb_lower'].round(2).tolist() if 'bb_lower' in df.columns else [],
+                "volatility_20": df['volatility_20'].round(4).tolist() if 'volatility_20' in df.columns else []
+            },
+            "latest_values": {
+                "close": float(df['Close_SPY'].iloc[-1]),
+                "volume": int(df['Volume_SPY'].iloc[-1]),
+                "rsi": float(df['rsi'].iloc[-1]) if 'rsi' in df.columns else None,
+                "volatility": float(df['volatility_20'].iloc[-1]) if 'volatility_20' in df.columns else None
+            }
+        }
+        
+        return response_data
+        
+    except Exception as e:
+        logger.error(f"Historical data error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch historical data: {str(e)}")
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

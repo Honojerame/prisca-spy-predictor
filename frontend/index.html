@@ -259,39 +259,217 @@
                 const response = await fetch(`${API_BASE_URL}/model/info`);
                 const modelInfo = await response.json();
                 
-                // Display training data info in the chart
+                // Display training data info
                 const trainingInfo = modelInfo.dataset_info || {};
                 const perfMetrics = modelInfo.performance_metrics || {};
                 
-                Plotly.newPlot('historicalChart', [{
-                    x: [],
-                    y: [],
-                    type: 'scatter',
-                    mode: 'lines',
-                    line: {color: '#667eea', width: 2}
-                }], {
+                // Update chart title with model info
+                const chartTitle = `Model Performance: MAE $${perfMetrics.MAE?.toFixed(2) || 'N/A'} | R² ${perfMetrics.R2?.toFixed(3) || 'N/A'} | Training: ${trainingInfo.samples || 619} samples`;
+                
+                // Fetch and display real historical data
+                fetchHistoricalData(chartTitle);
+                
+            } catch (error) {
+                console.error('Failed to fetch model info:', error);
+                fetchHistoricalData('SPY Historical Data');
+            }
+        }
+
+        // Fetch and display real historical SPY data with technical indicators
+        async function fetchHistoricalData(modelTitle = 'SPY Historical Data') {
+            try {
+                const response = await fetch(`${API_BASE_URL}/historical-data?days=60`);
+                const data = await response.json();
+                
+                // Chart 1: Price with Moving Averages and Bollinger Bands
+                const priceTraces = [
+                    {
+                        x: data.dates,
+                        y: data.close_prices,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'SPY Close',
+                        line: {color: '#667eea', width: 2}
+                    }
+                ];
+                
+                // Add Moving Averages if available
+                if (data.technical_indicators.ma_5 && data.technical_indicators.ma_5.length > 0) {
+                    priceTraces.push({
+                        x: data.dates,
+                        y: data.technical_indicators.ma_5,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'MA(5)',
+                        line: {color: '#f59e0b', width: 1, dash: 'dot'}
+                    });
+                }
+                
+                if (data.technical_indicators.ma_20 && data.technical_indicators.ma_20.length > 0) {
+                    priceTraces.push({
+                        x: data.dates,
+                        y: data.technical_indicators.ma_20,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'MA(20)',
+                        line: {color: '#10b981', width: 1.5}
+                    });
+                }
+                
+                if (data.technical_indicators.ma_50 && data.technical_indicators.ma_50.length > 0) {
+                    priceTraces.push({
+                        x: data.dates,
+                        y: data.technical_indicators.ma_50,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'MA(50)',
+                        line: {color: '#ef4444', width: 1.5}
+                    });
+                }
+                
+                // Add Bollinger Bands if available
+                if (data.technical_indicators.bb_upper && data.technical_indicators.bb_upper.length > 0) {
+                    priceTraces.push({
+                        x: data.dates,
+                        y: data.technical_indicators.bb_upper,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'BB Upper',
+                        line: {color: '#9ca3af', width: 1, dash: 'dash'},
+                        showlegend: false
+                    });
+                    priceTraces.push({
+                        x: data.dates,
+                        y: data.technical_indicators.bb_lower,
+                        type: 'scatter',
+                        mode: 'lines',
+                        name: 'BB Lower',
+                        line: {color: '#9ca3af', width: 1, dash: 'dash'},
+                        fill: 'tonexty',
+                        fillcolor: 'rgba(156, 163, 175, 0.1)',
+                        showlegend: false
+                    });
+                }
+                
+                Plotly.newPlot('historicalChart', priceTraces, {
                     title: {
-                        text: `Model Training Info<br><sub>Samples: ${trainingInfo.samples || 619} | Period: 2022-2023 | MAE: $${perfMetrics.MAE?.toFixed(2) || 'N/A'} | R²: ${perfMetrics.R2?.toFixed(3) || 'N/A'}</sub>`,
+                        text: `SPY Price & Moving Averages (Last 60 Days)<br><sub style="font-size:10px">${modelTitle}</sub>`,
                         font: {size: 14}
                     },
-                    margin: {t: 70, r: 20, b: 40, l: 50},
+                    margin: {t: 70, r: 20, b: 40, l: 60},
                     paper_bgcolor: 'rgba(0,0,0,0)',
-                    plot_bgcolor: 'rgba(0,0,0,0)',
-                    xaxis: {title: 'Training Period', gridcolor: '#e0e0e0'},
-                    yaxis: {title: 'SPY Price ($)', gridcolor: '#e0e0e0'},
+                    plot_bgcolor: 'white',
+                    xaxis: {
+                        title: 'Date',
+                        gridcolor: '#f3f4f6',
+                        showgrid: true
+                    },
+                    yaxis: {
+                        title: 'Price ($)',
+                        gridcolor: '#f3f4f6',
+                        showgrid: true
+                    },
+                    legend: {
+                        orientation: 'h',
+                        yanchor: 'bottom',
+                        y: -0.3,
+                        xanchor: 'center',
+                        x: 0.5
+                    },
+                    hovermode: 'x unified'
+                });
+                
+                // Chart 2: RSI and Volume
+                const rsiTrace = {
+                    x: data.dates,
+                    y: data.technical_indicators.rsi || [],
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'RSI',
+                    line: {color: '#8b5cf6', width: 2},
+                    yaxis: 'y'
+                };
+                
+                const volumeTrace = {
+                    x: data.dates,
+                    y: data.volume,
+                    type: 'bar',
+                    name: 'Volume',
+                    marker: {color: '#d1d5db', opacity: 0.5},
+                    yaxis: 'y2'
+                };
+                
+                // Add RSI overbought/oversold lines
+                const overboughtLine = {
+                    x: data.dates,
+                    y: Array(data.dates.length).fill(70),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Overbought (70)',
+                    line: {color: '#ef4444', width: 1, dash: 'dash'},
+                    yaxis: 'y'
+                };
+                
+                const oversoldLine = {
+                    x: data.dates,
+                    y: Array(data.dates.length).fill(30),
+                    type: 'scatter',
+                    mode: 'lines',
+                    name: 'Oversold (30)',
+                    line: {color: '#10b981', width: 1, dash: 'dash'},
+                    yaxis: 'y'
+                };
+                
+                const currentRSI = data.latest_values.rsi?.toFixed(2) || 'N/A';
+                const rsiStatus = data.latest_values.rsi > 70 ? 'Overbought' : data.latest_values.rsi < 30 ? 'Oversold' : 'Neutral';
+                
+                Plotly.newPlot('featureImportance', [rsiTrace, overboughtLine, oversoldLine, volumeTrace], {
+                    title: {
+                        text: `RSI & Volume Indicators<br><sub style="font-size:10px">Current RSI: ${currentRSI} (${rsiStatus})</sub>`,
+                        font: {size: 14}
+                    },
+                    margin: {t: 70, r: 60, b: 40, l: 60},
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'white',
+                    xaxis: {
+                        title: 'Date',
+                        gridcolor: '#f3f4f6'
+                    },
+                    yaxis: {
+                        title: 'RSI',
+                        gridcolor: '#f3f4f6',
+                        range: [0, 100]
+                    },
+                    yaxis2: {
+                        title: 'Volume',
+                        overlaying: 'y',
+                        side: 'right',
+                        showgrid: false
+                    },
+                    legend: {
+                        orientation: 'h',
+                        yanchor: 'bottom',
+                        y: -0.3,
+                        xanchor: 'center',
+                        x: 0.5
+                    },
+                    hovermode: 'x unified'
+                });
+                
+            } catch (error) {
+                console.error('Failed to fetch historical data:', error);
+                // Show error message in charts
+                Plotly.newPlot('historicalChart', [], {
+                    title: 'Failed to load chart data',
                     annotations: [{
-                        text: '📊 Model trained on historical $300-$450 SPY range<br>Current market: $680+ (Out of training range)',
+                        text: 'Error loading data. Please refresh.',
                         xref: 'paper',
                         yref: 'paper',
                         x: 0.5,
                         y: 0.5,
-                        showarrow: false,
-                        font: {size: 13, color: '#666'}
+                        showarrow: false
                     }]
                 });
-                
-            } catch (error) {
-                console.error('Failed to fetch model info:', error);
             }
         }
 
@@ -305,7 +483,7 @@
                 mode: 'lines',
                 line: {color: '#667eea'}
             }], {
-                title: {text: 'Model Training Data', font: {size: 14}},
+                title: {text: 'Loading SPY data...', font: {size: 14}},
                 margin: {t: 40, r: 20, b: 40, l: 50},
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -321,6 +499,7 @@
                 orientation: 'h',
                 marker: {color: '#764ba2'}
             }], {
+                title: {text: 'Loading indicators...', font: {size: 14}},
                 margin: {t: 20, r: 20, b: 40, l: 150},
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 plot_bgcolor: 'rgba(0,0,0,0)',
@@ -332,6 +511,8 @@
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', () => {
             initCharts();
+            // Load real historical data immediately
+            fetchHistoricalData('SPY Historical Data & Technical Indicators');
         });
     </script>
 </body>
