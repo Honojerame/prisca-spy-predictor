@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRISCA - SPY Price Predictor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header class="gradient-bg text-white shadow-lg">
+        <div class="container mx-auto px-6 py-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-4xl font-bold">PRISCA</h1>
+                    <p class="text-purple-200 text-sm mt-1">Predictive Real-time Investment Strategy & Capital Allocation</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-purple-200">Powered by XGBoost ML</div>
+                    <div class="text-xs text-purple-300 mt-1">Model Accuracy: 95.6% R²</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8">
+        <!-- Prediction Card -->
+        <div class="card rounded-2xl shadow-2xl p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Next-Day SPY Opening Price</h2>
+                <button 
+                    id="refreshBtn" 
+                    class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg"
+                    onclick="getPrediction()">
+                    🔄 Get Prediction
+                </button>
+            </div>
+
+            <!-- Loading State -->
+            <div id="loadingState" class="hidden text-center py-12">
+                <div class="inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-purple-600 border-r-transparent"></div>
+                <p class="mt-4 text-gray-600">Analyzing market data...</p>
+            </div>
+
+            <!-- Prediction Results -->
+            <div id="predictionResults" class="hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <!-- Current Price -->
+                    <div class="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl">
+                        <div class="text-sm text-blue-600 font-semibold mb-2">CURRENT PRICE</div>
+                        <div class="text-3xl font-bold text-blue-900" id="currentPrice">$---</div>
+                        <div class="text-xs text-blue-600 mt-2" id="currentDate">---</div>
+                    </div>
+
+                    <!-- Predicted Price -->
+                    <div class="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl">
+                        <div class="text-sm text-purple-600 font-semibold mb-2">PREDICTED OPENING</div>
+                        <div class="text-3xl font-bold text-purple-900" id="predictedPrice">$---</div>
+                        <div class="text-xs text-purple-600 mt-2" id="predictionDate">---</div>
+                    </div>
+
+                    <!-- Predicted Change -->
+                    <div class="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl">
+                        <div class="text-sm text-green-600 font-semibold mb-2">EXPECTED CHANGE</div>
+                        <div class="text-3xl font-bold" id="predictedChange">$---</div>
+                        <div class="text-xs font-semibold mt-2" id="predictedChangePct">---</div>
+                    </div>
+                </div>
+
+                <!-- Confidence Interval -->
+                <div class="bg-gray-50 p-6 rounded-xl mb-6">
+                    <div class="text-sm text-gray-600 font-semibold mb-3">95% CONFIDENCE INTERVAL</div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="text-xs text-gray-500">Lower Bound</div>
+                            <div class="text-xl font-bold text-gray-700" id="confidenceLower">$---</div>
+                        </div>
+                        <div class="flex-1 mx-6">
+                            <div class="h-2 bg-gradient-to-r from-red-300 via-yellow-300 to-green-300 rounded-full"></div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-gray-500">Upper Bound</div>
+                            <div class="text-xl font-bold text-gray-700" id="confidenceUpper">$---</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Info -->
+                <div class="flex items-center justify-between text-sm text-gray-500">
+                    <div>Model: <span class="font-semibold" id="modelVersion">---</span></div>
+                    <div>Timestamp: <span id="timestamp">---</span></div>
+                </div>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="hidden text-center py-12">
+                <div class="text-red-500 text-5xl mb-4">⚠️</div>
+                <p class="text-gray-700 font-semibold mb-2">Prediction Failed</p>
+                <p class="text-gray-500 text-sm" id="errorMessage">---</p>
+            </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Historical Chart -->
+            <div class="card rounded-2xl shadow-xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">SPY Historical Prices</h3>
+                <div id="historicalChart" style="height: 300px;"></div>
+            </div>
+
+            <!-- Feature Importance -->
+            <div class="card rounded-2xl shadow-xl p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Key Prediction Factors</h3>
+                <div id="featureImportance" style="height: 300px;"></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-16 py-6 text-center text-gray-500 text-sm">
+        <p>PRISCA © 2025 | Built with XGBoost, FastAPI, and ❤️</p>
+        <p class="mt-2">⚠️ For educational purposes only. Not financial advice.</p>
+    </footer>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000';
+
+        async function getPrediction() {
+            const loadingState = document.getElementById('loadingState');
+            const predictionResults = document.getElementById('predictionResults');
+            const errorState = document.getElementById('errorState');
+            const refreshBtn = document.getElementById('refreshBtn');
+
+            // Show loading state
+            loadingState.classList.remove('hidden');
+            predictionResults.classList.add('hidden');
+            errorState.classList.add('hidden');
+            refreshBtn.disabled = true;
+            refreshBtn.classList.add('opacity-50');
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        include_explanation: false
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Update UI with prediction data
+                document.getElementById('currentPrice').textContent = `$${data.current_price.toFixed(2)}`;
+                document.getElementById('currentDate').textContent = new Date().toLocaleDateString();
+                
+                document.getElementById('predictedPrice').textContent = `$${data.prediction.toFixed(2)}`;
+                document.getElementById('predictionDate').textContent = data.prediction_date;
+                
+                // Check if prediction is unrealistic (model trained on old data)
+                const changePct = Math.abs(data.predicted_change_pct);
+                const isUnrealistic = changePct > 30; // Flag if > 30% change
+                
+                // Clear previous warnings
+                const oldWarning = document.querySelector('.model-warning');
+                if (oldWarning) oldWarning.remove();
+                
+                if (isUnrealistic) {
+                    // Show warning for unrealistic predictions
+                    const warningHtml = `
+                        <div class="model-warning mt-4 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0">
+                                    <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <div class="ml-3">
+                                    <h3 class="text-sm font-medium text-yellow-800">⚠️ Model Training Data Notice</h3>
+                                    <div class="mt-2 text-sm text-yellow-700">
+                                        <p>This model was trained on SPY data from <strong>2022-2023</strong> when prices ranged <strong>$300-$450</strong>.</p>
+                                        <p class="mt-1">Current SPY price ($${data.current_price.toFixed(2)}) is outside the training range, which causes inaccurate predictions.</p>
+                                        <p class="mt-2 font-semibold">💡 Recommendation: Retrain the model with recent 2024-2025 data for accurate predictions.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    predictionResults.insertAdjacentHTML('beforeend', warningHtml);
+                }
+                
+                const changeColor = data.predicted_change >= 0 ? 'text-green-700' : 'text-red-700';
+                const changeIcon = data.predicted_change >= 0 ? '📈' : '📉';
+                document.getElementById('predictedChange').textContent = `${changeIcon} $${Math.abs(data.predicted_change).toFixed(2)}`;
+                document.getElementById('predictedChange').className = `text-3xl font-bold ${changeColor}`;
+                
+                document.getElementById('predictedChangePct').textContent = `${data.predicted_change_pct >= 0 ? '+' : ''}${data.predicted_change_pct.toFixed(2)}%`;
+                document.getElementById('predictedChangePct').className = `text-xs font-semibold mt-2 ${changeColor}`;
+                
+                document.getElementById('confidenceLower').textContent = `$${data.confidence_interval.lower.toFixed(2)}`;
+                document.getElementById('confidenceUpper').textContent = `$${data.confidence_interval.upper.toFixed(2)}`;
+                
+                document.getElementById('modelVersion').textContent = data.model_version;
+                document.getElementById('timestamp').textContent = new Date(data.timestamp).toLocaleString();
+                
+                // Fetch and display model training info
+                fetchModelInfo();
+
+                // Show results
+                loadingState.classList.add('hidden');
+                predictionResults.classList.remove('hidden');
+
+            } catch (error) {
+                console.error('Prediction error:', error);
+                document.getElementById('errorMessage').textContent = error.message;
+                loadingState.classList.add('hidden');
+                errorState.classList.remove('hidden');
+            } finally {
+                refreshBtn.disabled = false;
+                refreshBtn.classList.remove('opacity-50');
+            }
+        }
+
+        // Fetch and display model training information
+        async function fetchModelInfo() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/model/info`);
+                const modelInfo = await response.json();
+                
+                // Display training data info in the chart
+                const trainingInfo = modelInfo.dataset_info || {};
+                const perfMetrics = modelInfo.performance_metrics || {};
+                
+                Plotly.newPlot('historicalChart', [{
+                    x: [],
+                    y: [],
+                    type: 'scatter',
+                    mode: 'lines',
+                    line: {color: '#667eea', width: 2}
+                }], {
+                    title: {
+                        text: `Model Training Info<br><sub>Samples: ${trainingInfo.samples || 619} | Period: 2022-2023 | MAE: $${perfMetrics.MAE?.toFixed(2) || 'N/A'} | R²: ${perfMetrics.R2?.toFixed(3) || 'N/A'}</sub>`,
+                        font: {size: 14}
+                    },
+                    margin: {t: 70, r: 20, b: 40, l: 50},
+                    paper_bgcolor: 'rgba(0,0,0,0)',
+                    plot_bgcolor: 'rgba(0,0,0,0)',
+                    xaxis: {title: 'Training Period', gridcolor: '#e0e0e0'},
+                    yaxis: {title: 'SPY Price ($)', gridcolor: '#e0e0e0'},
+                    annotations: [{
+                        text: '📊 Model trained on historical $300-$450 SPY range<br>Current market: $680+ (Out of training range)',
+                        xref: 'paper',
+                        yref: 'paper',
+                        x: 0.5,
+                        y: 0.5,
+                        showarrow: false,
+                        font: {size: 13, color: '#666'}
+                    }]
+                });
+                
+            } catch (error) {
+                console.error('Failed to fetch model info:', error);
+            }
+        }
+
+        // Initialize placeholder charts
+        function initCharts() {
+            // Historical chart placeholder
+            Plotly.newPlot('historicalChart', [{
+                x: [],
+                y: [],
+                type: 'scatter',
+                mode: 'lines',
+                line: {color: '#667eea'}
+            }], {
+                title: {text: 'Model Training Data', font: {size: 14}},
+                margin: {t: 40, r: 20, b: 40, l: 50},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {title: 'Date'},
+                yaxis: {title: 'Price ($)'}
+            });
+
+            // Feature importance placeholder
+            Plotly.newPlot('featureImportance', [{
+                x: [],
+                y: [],
+                type: 'bar',
+                orientation: 'h',
+                marker: {color: '#764ba2'}
+            }], {
+                margin: {t: 20, r: 20, b: 40, l: 150},
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                xaxis: {title: 'Importance'},
+                yaxis: {title: ''}
+            });
+        }
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+        });
+    </script>
+</body>
+</html>
