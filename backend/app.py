@@ -81,9 +81,9 @@ async def startup_event():
         # Construct absolute paths relative to script location
         import os
         base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        model_path = os.path.join(base_dir, 'prisca_xgb_model.pkl')
-        features_path = os.path.join(base_dir, 'feature_list.json')
-        metadata_path = os.path.join(base_dir, 'model_metadata.json')
+        model_path = os.path.join(base_dir, 'models', 'prisca_xgb_model.pkl')
+        features_path = os.path.join(base_dir, 'models', 'feature_list.json')
+        metadata_path = os.path.join(base_dir, 'models', 'model_metadata.json')
         
         # Load trained model
         model = joblib.load(model_path)

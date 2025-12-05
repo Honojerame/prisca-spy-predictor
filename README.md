@@ -43,15 +43,24 @@ PRISCA/
 │   ├── Salesforce_1b_data_exploration and preparation.ipynb
 │   └── XGB_Regressor.ipynb   # Model training
 ├── models/
-│   ├── prisca_xgb_model.pkl  # Trained model
-│   ├── feature_list.json     # Feature names
-│   └── model_metadata.json   # Model info
+│   ├── prisca_xgb_model.pkl  # Trained XGBoost model
+│   ├── feature_list.json     # Feature names (43 features)
+│   └── model_metadata.json   # Model performance metrics
 ├── data/
-│   └── final_modeling_dataset.csv  # Training data
-├── enhanced_visualizations.py      # Plotly charts
-├── PRISCA_ARCHITECTURE.md          # System design
-├── QUICKSTART.md                   # Setup guide
-└── MODEL_TRAINING_SUMMARY.md       # Training details
+│   ├── final_modeling_dataset.csv       # Training dataset
+│   └── final_modeling_dataset_new (1).csv
+├── scripts/
+│   ├── enhanced_visualizations.py       # Plotly visualization scripts
+│   ├── export_model.py                  # Model export utilities
+│   └── retrain_model_2024_2025.py      # Retraining script
+├── docs/
+│   ├── PRISCA_ARCHITECTURE.md           # System architecture
+│   ├── QUICKSTART.md                    # Setup guide
+│   ├── MODEL_TRAINING_SUMMARY.md        # Training details
+│   ├── PRESENTATION_SCRIPT.md           # 15-min presentation guide
+│   └── ChallengeProjectOverviewDeck_Fall2025AIStudio.pdf
+├── start_server.ps1                     # PowerShell server launcher
+└── README.md                            # This file
 ```
 
 ---
