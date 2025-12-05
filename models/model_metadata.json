@@ -1,0 +1,28 @@
+{
+  "model_type": "XGBoost (Tuned - 2024-2025 Data)",
+  "training_date": "2025-11-30 16:47:26",
+  "data_period": {
+    "start": "2024-03-13",
+    "end": "2025-11-26",
+    "price_range": "$486.15 - $687.39"
+  },
+  "performance_metrics": {
+    "MAE": 27.696202988937582,
+    "RMSE": 32.11481289499913,
+    "MAPE": 4.144812235242759,
+    "R2": -2.674893076903156
+  },
+  "best_parameters": {
+    "colsample_bytree": 1.0,
+    "learning_rate": 0.05,
+    "max_depth": 3,
+    "n_estimators": 300,
+    "subsample": 0.8
+  },
+  "dataset_info": {
+    "total_samples": 430,
+    "train_samples": 344,
+    "test_samples": 86,
+    "n_features": 44
+  }
+}
