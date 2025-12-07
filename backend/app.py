@@ -260,17 +260,16 @@ def prepare_features_for_prediction(df: pd.DataFrame) -> pd.DataFrame:
     return features
 
 
-@app.get("/", response_model=Dict[str, str])
+@app.get("/")
 async def root():
     """Root endpoint with API information"""
     return {
         "message": "PRISCA API - SPY Next-Day Opening Price Prediction",
         "version": "1.0.0",
-        "endpoints": {
-            "health": "/health",
-            "predict": "/predict",
-            "model_info": "/model/info"
-        }
+        "health_endpoint": "/health",
+        "predict_endpoint": "/predict",
+        "model_info_endpoint": "/model/info",
+        "docs": "/docs"
     }
 
 
