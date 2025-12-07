@@ -544,7 +544,10 @@
     </footer>
 
     <script>
-        const API_BASE_URL = 'http://localhost:8000';
+        // API URL - automatically uses deployed backend or falls back to localhost
+        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:'
+            ? 'http://localhost:8000'
+            : 'https://prisca-backend.onrender.com'; // Replace with your deployed backend URL
 
         async function getPrediction() {
             const loadingState = document.getElementById('loadingState');

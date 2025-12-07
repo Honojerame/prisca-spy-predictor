@@ -445,6 +445,19 @@ async def get_historical_data(days: int = 30):
         raise HTTPException(status_code=500, detail=f"Failed to fetch historical data: {str(e)}")
 
 
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for deployment platforms"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "model_loaded": model is not None,
+        "features_loaded": feature_list is not None
+    }
+
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
