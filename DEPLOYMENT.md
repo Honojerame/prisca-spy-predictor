@@ -17,13 +17,13 @@
 2. **Deploy Backend:**
    - Go to https://render.com and sign up/login
    - Click "New +" → "Web Service"
-   - Connect your GitHub repository: `shaaronl/market-mood-to-financial-moves`
+   - Connect your GitHub repository: `Honojerame/prisca-spy-predictor`
    - Configure:
      - **Name**: `prisca-backend`
-     - **Root Directory**: `backend`
+     - **Root Directory**: Leave empty
      - **Environment**: `Python 3`
-     - **Build Command**: `pip install -r requirements.txt`
-     - **Start Command**: `uvicorn app:app --host 0.0.0.0 --port $PORT`
+     - **Build Command**: `pip install -r backend/requirements.txt`
+     - **Start Command**: `cd backend && python -m uvicorn app:app --host 0.0.0.0 --port $PORT`
    - Click "Create Web Service"
    - Wait 5-10 minutes for deployment
    - Copy the deployed URL (e.g., `https://prisca-backend.onrender.com`)
